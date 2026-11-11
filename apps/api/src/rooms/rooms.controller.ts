@@ -12,12 +12,14 @@ import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { PERMISSIONS, RequirePermissions } from '../auth/permissions';
 
 @ApiTags('Rooms')
 @Controller('rooms')
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
+  @RequirePermissions(PERMISSIONS.DEVICES_MANAGE)
   @Post()
   create(@Body() createRoomDto: CreateRoomDto) {
     return this.roomsService.create(createRoomDto);
@@ -33,6 +35,7 @@ export class RoomsController {
     return this.roomsService.findOne(id);
   }
 
+  @RequirePermissions(PERMISSIONS.DEVICES_MANAGE)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -41,6 +44,7 @@ export class RoomsController {
     return this.roomsService.update(id, updateRoomDto);
   }
 
+  @RequirePermissions(PERMISSIONS.DEVICES_MANAGE)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.roomsService.remove(id);

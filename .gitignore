@@ -14,3 +14,6 @@ next-env.d.ts
 
 .DS_Store
 npm-debug.log*
+
+# copied from docs/ at build time
+apps/web/public/gridsense-device-guide.pdf

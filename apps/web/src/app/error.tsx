@@ -1,30 +1,24 @@
-"use client"; // Error components must be Client Components
+"use client";
 
-import { Button } from "@/components/ui/button";
-import { CardDescription, CardTitle } from "@/components/ui/card";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { LogoMark } from "@/components/brand/logo";
 
-export default function Error({
-	error,
-	reset,
-}: {
-	error: Error & { digest?: string };
-	reset: () => void;
-}) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
 	useEffect(() => {
-		// Log the error to an error reporting service
 		console.error(error);
 	}, [error]);
 
 	return (
-		<div className="min-h-screen w-full flex flex-col items-center justify-center gap-3 max-w-xs text-center mx-auto">
-			<h1 className="text-7xl font-bold mb-6">500</h1>
-			<CardTitle>Something Went Wrong!</CardTitle>
-			<CardDescription>
-				Attempt to recover by trying again. If the problem persists, please
-				contact support.
-			</CardDescription>
-			<Button onClick={reset}>Try Again</Button>
-		</div>
+		<main className="flex min-h-svh flex-col items-center justify-center px-6 text-center">
+			<LogoMark className="h-10 w-10" />
+			<h1 className="mt-8 text-2xl font-semibold tracking-tight">Something went wrong</h1>
+			<p className="mt-2 max-w-sm text-sm text-muted-foreground">
+				GridSense couldn’t load this page. It’s usually a brief connection problem.
+			</p>
+			<Button className="mt-6" onClick={reset}>
+				Try again
+			</Button>
+		</main>
 	);
 }

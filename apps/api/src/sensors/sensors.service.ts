@@ -2,33 +2,51 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSensorDto } from './dto/create-sensor.dto';
 import { UpdateSensorDto } from './dto/update-sensor.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { duplicateName } from '../prisma/errors';
+import { nextLabel } from '../prisma/labels';
 
 @Injectable()
 export class SensorsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createSensorDto: CreateSensorDto) {
-    const { label, description, room_id } = createSensorDto;
+    const { description } = createSensorDto;
+    const room_id = Number(createSensorDto.room_id);
+    const room = Number.isInteger(room_id)
+      ? await this.prisma.room.findUnique({
+          where: { id: room_id },
+          select: { sensors: { select: { label: true } } },
+        })
+      : null;
+    if (!room) throw new NotFoundException('Device not found');
+    const label =
+      createSensorDto.label?.trim() ||
+      nextLabel(
+        'Sensor',
+        room.sensors.map((x) => x.label),
+      );
 
-    const data = await this.prisma.sensor.create({
-      data: {
-        label,
-        description,
-        room: {
-          connect: {
-            id: room_id,
+    const data = await this.prisma.sensor
+      .create({
+        data: {
+          label,
+          description,
+          room: {
+            connect: {
+              id: room_id,
+            },
           },
         },
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        room: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          room: true,
+          created_at: true,
+          updated_at: true,
+        },
+      })
+      .catch(duplicateName('sensor'));
 
     return {
       message: 'Sensor created successfully',
@@ -83,30 +101,32 @@ export class SensorsService {
 
     if (!sensor) throw new NotFoundException(`Sensor with id ${id} not found`);
 
-    const data = await this.prisma.sensor.update({
-      where: {
-        id,
-      },
-      data: {
-        label,
-        description,
-        ...(room_id && {
-          room: {
-            connect: {
-              id: room_id,
+    const data = await this.prisma.sensor
+      .update({
+        where: {
+          id,
+        },
+        data: {
+          label,
+          description,
+          ...(room_id && {
+            room: {
+              connect: {
+                id: room_id,
+              },
             },
-          },
-        }),
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        room: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+          }),
+        },
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          room: true,
+          created_at: true,
+          updated_at: true,
+        },
+      })
+      .catch(duplicateName('sensor'));
 
     return {
       message: 'Sensor updated successfully',

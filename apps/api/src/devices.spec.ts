@@ -25,7 +25,15 @@ describe('RoomsService.create', () => {
     expect(sensorLabels).toHaveLength(2);
     expect(switchLabels).toHaveLength(6);
     expect(new Set(switchLabels).size).toBe(6);
-    expect(switchLabels[0]).toMatch(/^Pond A \/ Switch 1 \(/);
+    expect(switchLabels).toEqual([
+      'Switch 1',
+      'Switch 2',
+      'Switch 3',
+      'Switch 4',
+      'Switch 5',
+      'Switch 6',
+    ]);
+    expect(sensorLabels).toEqual(['Sensor 1', 'Sensor 2']);
   });
 
   it.each([-1, 33, 1.5, 'abc'])('rejects count %p', async (bad) => {

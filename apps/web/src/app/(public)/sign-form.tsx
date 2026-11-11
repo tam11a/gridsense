@@ -1,180 +1,104 @@
 "use client";
 
-// Form
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
-// UI
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-// Icon
-import { LuLoader2 } from "react-icons/lu";
-
-// Actions
-
-// Utils
-import handleResponse from "@/lib/handle-response";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { errorMessage, useLogin } from "@/lib/api";
 import { authService } from "@/lib/auth.service";
-import { useLogin } from "@/lib/actions/auth/sign-in";
 
-// Form Schema
-const formSchema = z.object({
-	email: z
-		.string()
-		.min(6, {
-			message: "Email must be at least 6 characters.",
-		})
-		.max(155, {
-			message: "Email must be at most 155 characters.",
-		}),
-	password: z.string().min(6, {
-		message: "Password must be at least 6 characters.",
-	}),
+const schema = z.object({
+	email: z.string().trim().email("Enter a valid email"),
+	password: z.string().min(1, "Enter your password"),
 });
 
 export function SignForm() {
-	// Router Hook
 	const router = useRouter();
+	const login = useLogin();
+	const [show, setShow] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-	// Login Hook
-	const { mutateAsync: login, isPending } = useLogin();
-
-	// Form Hook
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			email: "",
-			password: "",
-		},
+	const form = useForm<z.infer<typeof schema>>({
+		resolver: zodResolver(schema),
+		defaultValues: { email: "", password: "" },
 	});
 
-	async function onSubmit(values: z.infer<typeof formSchema>) {
-		// Clearing errors
-		form.clearErrors();
-
-		// Making the request
-		const res = await handleResponse(() => login(values));
-
-		if (res.status) {
+	const onSubmit = form.handleSubmit(async (values) => {
+		setError(null);
+		try {
+			const res = await login.mutateAsync(values);
 			authService.setToken(res.data.token);
-
-			// Generating Toast
-			toast("Logged in successfully!", {
-				description: `Welcome back, ${res.data.user.first_name}`,
-				important: true,
-			});
-
-			// Redirect to dashboard
+			toast.success(`Welcome back, ${res.data.user.first_name}`);
+			router.replace("/dashboard");
 			router.refresh();
-		} else {
-			// Setting errors
-			form.setError("email", {
-				type: "validate",
-				message: "",
-			});
-			form.setError("password", {
-				type: "validate",
-				message: res.message,
-			});
-
-			// Generating Toast
-			toast("Request failed", {
-				description: res.message,
-				important: true,
-				action: {
-					label: "Retry",
-					onClick: () => onSubmit(values), // Retrying the request
-				},
-			});
+		} catch (err) {
+			setError(errorMessage(err));
 		}
-	}
+	});
 
 	return (
-		<Form {...form}>
-			<Card className="mx-2">
-				<CardHeader>
-					<CardTitle>GridSense</CardTitle>
-					<CardDescription>
-						Sign in to monitor and control your devices.
-					</CardDescription>
-				</CardHeader>
-				<form onSubmit={form.handleSubmit(onSubmit)}>
-					<CardContent className="space-y-3">
-						<FormField
-							control={form.control}
-							name="email"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Email</FormLabel>
+		<>
+			<h2 className="text-2xl font-semibold tracking-tight">Sign in</h2>
+			<p className="mt-1 text-sm text-muted-foreground">Welcome back. Enter your details to continue.</p>
+
+			<Form {...form}>
+				<form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
+					{error && (
+						<div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+							{error}
+						</div>
+					)}
+					<FormField
+						control={form.control}
+						name="email"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email</FormLabel>
+								<FormControl>
+									<Input type="email" placeholder="you@company.com" autoComplete="email" autoFocus {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="password"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Password</FormLabel>
+								<div className="relative">
 									<FormControl>
-										<Input
-											placeholder="example@email.com"
-											autoComplete="email"
-											{...field}
-										/>
+										<Input type={show ? "text" : "password"} autoComplete="current-password" className="pr-10" {...field} />
 									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="password"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Password</FormLabel>
-									<FormControl>
-										<Input
-											type="password"
-											placeholder="********"
-											autoComplete="current-password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</CardContent>
-					<CardFooter>
-						<Button
-							type="submit"
-							className="w-full"
-							size={"lg"}
-							disabled={isPending}
-						>
-							{isPending ? (
-								<>
-									<LuLoader2 className="mr-2 h-4 w-4 animate-spin" />
-									Signing in..
-								</>
-							) : (
-								<>Sign in</>
-							)}
-						</Button>
-					</CardFooter>
+									<button
+										type="button"
+										onClick={() => setShow((s) => !s)}
+										className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+										aria-label={show ? "Hide password" : "Show password"}
+									>
+										{show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+									</button>
+								</div>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<Button type="submit" className="w-full" size="lg" disabled={login.isPending}>
+						{login.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Sign in
+					</Button>
+					<p className="text-center text-xs text-muted-foreground">
+						Forgot your password? Ask your GridSense administrator to reset it.
+					</p>
 				</form>
-			</Card>
-		</Form>
+			</Form>
+		</>
 	);
 }

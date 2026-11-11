@@ -7,7 +7,7 @@ import { ApiQuery, ApiTags } from '@nestjs/swagger';
 export class ChartController {
   constructor(private readonly chartService: ChartService) {}
 
-  @ApiQuery({ name: 'sensor_id', required: false })
+  @ApiQuery({ name: 'sensor_id', required: true })
   @ApiQuery({ name: 'date_lte', type: 'datetime', required: false })
   @ApiQuery({ name: 'date_gte', type: 'datetime', required: false })
   @Get('temperature')

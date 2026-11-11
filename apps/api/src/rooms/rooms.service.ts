@@ -3,10 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { duplicateName } from '../prisma/errors';
 
 const MAX_CHILDREN = 32;
 
@@ -25,40 +25,42 @@ export class RoomsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createRoomDto: CreateRoomDto) {
-    const { label, description } = createRoomDto;
+    const label = createRoomDto.label?.trim();
+    const description = createRoomDto.description?.trim() || null;
+    if (!label) throw new BadRequestException('Device name is required');
     // Form inputs arrive as strings; clamp so one request cannot create
     // thousands of rows.
     const sensors = clampCount(createRoomDto.sensors ?? 1, 'sensors');
     const switches = clampCount(createRoomDto.switches ?? 1, 'switches');
-    // Labels are unique in the schema, so random 0-999 numbers collided.
-    const tag = () => randomUUID().slice(0, 8);
-    const data = await this.prisma.room.create({
-      data: {
-        label,
-        description,
-        sensors: {
-          createMany: {
-            data: Array.from({ length: sensors }).map((_, i) => ({
-              label: `${label} / Sensor ${i + 1} (${tag()})`,
-            })),
+    const data = await this.prisma.room
+      .create({
+        data: {
+          label,
+          description,
+          sensors: {
+            createMany: {
+              data: Array.from({ length: sensors }).map((_, i) => ({
+                label: `Sensor ${i + 1}`,
+              })),
+            },
+          },
+          switches: {
+            createMany: {
+              data: Array.from({ length: switches }).map((_, i) => ({
+                label: `Switch ${i + 1}`,
+              })),
+            },
           },
         },
-        switches: {
-          createMany: {
-            data: Array.from({ length: switches }).map((_, i) => ({
-              label: `${label} / Switch ${i + 1} (${tag()})`,
-            })),
-          },
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          created_at: true,
+          updated_at: true,
         },
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+      })
+      .catch(duplicateName('device'));
 
     return {
       message: 'Room created successfully',
@@ -69,6 +71,7 @@ export class RoomsService {
 
   findAll() {
     return this.prisma.room.findMany({
+      orderBy: { created_at: 'asc' },
       // select: {
       //   id: true,
       //   label: true,
@@ -78,6 +81,7 @@ export class RoomsService {
       // },
       include: {
         sensors: {
+          orderBy: { id: 'asc' },
           include: {
             sensor_data: {
               orderBy: {
@@ -88,6 +92,7 @@ export class RoomsService {
           },
         },
         switches: {
+          orderBy: { id: 'asc' },
           include: {
             SwitchState: {
               orderBy: {
@@ -115,6 +120,7 @@ export class RoomsService {
       // },
       include: {
         sensors: {
+          orderBy: { id: 'asc' },
           include: {
             sensor_data: {
               orderBy: {
@@ -125,6 +131,7 @@ export class RoomsService {
           },
         },
         switches: {
+          orderBy: { id: 'asc' },
           include: {
             SwitchState: {
               orderBy: {
@@ -145,23 +152,31 @@ export class RoomsService {
   }
 
   async update(id: number, updateRoomDto: UpdateRoomDto) {
-    const { label, description } = updateRoomDto;
-    const data = await this.prisma.room.update({
-      where: {
-        id,
-      },
-      data: {
-        label,
-        description,
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    await this.findOne(id);
+    const label = updateRoomDto.label?.trim();
+    if (updateRoomDto.label !== undefined && !label) {
+      throw new BadRequestException('Device name is required');
+    }
+    const data = await this.prisma.room
+      .update({
+        where: {
+          id,
+        },
+        data: {
+          ...(label && { label }),
+          ...(updateRoomDto.description !== undefined && {
+            description: updateRoomDto.description?.trim() || null,
+          }),
+        },
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          created_at: true,
+          updated_at: true,
+        },
+      })
+      .catch(duplicateName('device'));
 
     return {
       message: 'Room updated successfully',

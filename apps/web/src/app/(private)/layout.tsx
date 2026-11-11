@@ -1,34 +1,12 @@
-import { ModeToggle } from "@/components/ui/mode-toggle";
 import { cookies } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
-import TokenValidationChecker from "./token-validation-checker";
-import Nav from "./nav";
-import SignOut from "./sign-out";
+import AppShell from "@/components/app/app-shell";
 
 export default function PrivateLayout({
 	children,
-}: Readonly<{
-	children: React.ReactNode;
-}>) {
-	// Check if the user is logged in
-	const token = cookies().get("access_token")?.value;
-	if (!token) {
+}: Readonly<{ children: React.ReactNode }>) {
+	if (!cookies().get("access_token")?.value) {
 		redirect("/", RedirectType.replace);
 	}
-
-	return (
-		<TokenValidationChecker>
-			<main
-			// vaul-drawer-wrapper="" // Needed for the drawer to work with scale animation
-			>
-				{children}
-
-				<Nav />
-			</main>
-			<SignOut />
-			<div className="fixed bottom-5 right-5 hidden lg:inline">
-				<ModeToggle />
-			</div>
-		</TokenValidationChecker>
-	);
+	return <AppShell>{children}</AppShell>;
 }

@@ -8,6 +8,8 @@ import { MqttService } from '../mqtt/mqtt.service';
 import { CreateSwitchDto } from './dto/create-switch.dto';
 import { UpdateSwitchDto } from './dto/update-switch.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { duplicateName } from '../prisma/errors';
+import { nextLabel } from '../prisma/labels';
 
 @Injectable()
 export class SwitchesService {
@@ -40,32 +42,48 @@ export class SwitchesService {
   }
 
   async create(createSwitchDto: CreateSwitchDto) {
-    const { label, description, room_id } = createSwitchDto;
+    const { description } = createSwitchDto;
+    const room_id = Number(createSwitchDto.room_id);
+    const room = Number.isInteger(room_id)
+      ? await this.prisma.room.findUnique({
+          where: { id: room_id },
+          select: { switches: { select: { label: true } } },
+        })
+      : null;
+    if (!room) throw new NotFoundException('Device not found');
+    const label =
+      createSwitchDto.label?.trim() ||
+      nextLabel(
+        'Switch',
+        room.switches.map((x) => x.label),
+      );
 
-    const data = await this.prisma.switch.create({
-      data: {
-        label,
-        description,
-        room: {
-          connect: {
-            id: room_id,
+    const data = await this.prisma.switch
+      .create({
+        data: {
+          label,
+          description,
+          room: {
+            connect: {
+              id: room_id,
+            },
           },
         },
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        room: {
-          select: {
-            id: true,
-            label: true,
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          room: {
+            select: {
+              id: true,
+              label: true,
+            },
           },
+          created_at: true,
+          updated_at: true,
         },
-        created_at: true,
-        updated_at: true,
-      },
-    });
+      })
+      .catch(duplicateName('switch'));
 
     return {
       message: 'Switch created successfully',
@@ -132,30 +150,32 @@ export class SwitchesService {
       throw new NotFoundException('Switch not found');
     }
 
-    const data = await this.prisma.switch.update({
-      where: {
-        id,
-      },
-      data: {
-        label,
-        description,
-        ...(room_id && {
-          room: {
-            connect: {
-              id: room_id,
+    const data = await this.prisma.switch
+      .update({
+        where: {
+          id,
+        },
+        data: {
+          label,
+          description,
+          ...(room_id && {
+            room: {
+              connect: {
+                id: room_id,
+              },
             },
-          },
-        }),
-      },
-      select: {
-        id: true,
-        label: true,
-        description: true,
-        room: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+          }),
+        },
+        select: {
+          id: true,
+          label: true,
+          description: true,
+          room: true,
+          created_at: true,
+          updated_at: true,
+        },
+      })
+      .catch(duplicateName('switch'));
 
     return {
       message: 'Switch updated successfully',

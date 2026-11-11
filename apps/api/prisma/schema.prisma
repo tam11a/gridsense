@@ -60,7 +60,7 @@ model Room {
 
 model Sensor {
   id          Int     @id @default(autoincrement())
-  label       String  @unique
+  label       String
   description String?
 
   room_id     Int
@@ -70,6 +70,7 @@ model Sensor {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  @@unique([room_id, label])
   @@map("sensors")
 }
 
@@ -90,7 +91,7 @@ model SensorData {
 
 model Switch {
   id          Int     @id @default(autoincrement())
-  label       String  @unique
+  label       String
   description String?
 
   room_id Int
@@ -100,6 +101,7 @@ model Switch {
   updated_at  DateTime      @updatedAt
   SwitchState SwitchState[]
 
+  @@unique([room_id, label])
   @@map("switches")
 }
 

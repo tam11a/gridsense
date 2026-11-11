@@ -111,7 +111,7 @@ describe('AuthService.login', () => {
   it('gives the same error for unknown email and wrong password', async () => {
     const prisma: any = {
       user: {
-        findUnique: jest
+        findFirst: jest
           .fn()
           .mockResolvedValueOnce(null)
           .mockResolvedValueOnce({
@@ -134,7 +134,7 @@ describe('AuthService.login', () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const prisma: any = {
       user: {
-        findUnique: jest
+        findFirst: jest
           .fn()
           .mockResolvedValue({ ...baseUser, password: 'legacy-pass' }),
         update,

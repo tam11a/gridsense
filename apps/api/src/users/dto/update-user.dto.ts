@@ -17,4 +17,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @ApiProperty()
   role_id: number;
+
+  @ApiProperty({ required: false })
+  is_active: boolean;
 }

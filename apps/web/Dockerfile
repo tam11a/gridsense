@@ -11,6 +11,8 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN npm ci --workspace @gridsense/web --include-workspace-root=false --no-audit --no-fund
 COPY apps/web apps/web
+# Device integration guide, linked from the dashboard's Connect dialog.
+COPY docs/GridSense-Device-Integration-Guide.pdf apps/web/public/gridsense-device-guide.pdf
 ARG NEXT_PUBLIC_API_URL=""
 ARG NEXT_PUBLIC_MQTT_BROKER=""
 ARG NEXT_PUBLIC_MQTT_BROKER_URL=""
