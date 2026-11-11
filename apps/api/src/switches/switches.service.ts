@@ -1,11 +1,43 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { MqttService } from '../mqtt/mqtt.service';
 import { CreateSwitchDto } from './dto/create-switch.dto';
 import { UpdateSwitchDto } from './dto/update-switch.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SwitchesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private mqtt: MqttService) {}
+
+  async action(id: number, action: boolean) {
+    if (typeof action !== 'boolean') {
+      throw new BadRequestException('action must be true or false');
+    }
+
+    const switch_ = await this.prisma.switch.findUnique({
+      where: { id },
+      select: { id: true, room: { select: { remote_action: true } } },
+    });
+    if (!switch_) throw new NotFoundException('Switch not found');
+    if (!switch_.room.remote_action) {
+      throw new ConflictException(
+        'Remote control is disabled for this device (manual control is on)',
+      );
+    }
+
+    // Same topic and payload the MQTT relay used, so device firmware is unchanged.
+    this.mqtt.publishSwitchCommand(id, action);
+
+    return {
+      message: `Switch ${action ? 'start' : 'stop'} command sent`,
+      data: { id, action },
+      statusCode: 201,
+    };
+  }
 
   async create(createSwitchDto: CreateSwitchDto) {
     const { label, description, room_id } = createSwitchDto;
@@ -107,11 +139,13 @@ export class SwitchesService {
       data: {
         label,
         description,
-        room: {
-          connect: {
-            id: room_id,
+        ...(room_id && {
+          room: {
+            connect: {
+              id: room_id,
+            },
           },
-        },
+        }),
       },
       select: {
         id: true,

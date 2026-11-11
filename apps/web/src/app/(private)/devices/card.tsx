@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import config from "@/lib/config";
 import { useRef, useState } from "react";
-import { MqttClient } from "mqtt";
 import { DatabaseIcon, LucideFileWarning } from "lucide-react";
 
 export default function DeviceCard({ device }: { device: any }) {
@@ -48,10 +47,6 @@ export default function DeviceCard({ device }: { device: any }) {
 		})),
 	]);
 
-	const mqttClientRef = useRef<MqttClient | null>(null);
-	const setMqttClient = (client: MqttClient) => {
-		mqttClientRef.current = client;
-	};
 
 	useMqtt({
 		uri: config.mqttBroker,
@@ -62,7 +57,6 @@ export default function DeviceCard({ device }: { device: any }) {
 			reconnectPeriod: 1000,
 		},
 		topicHandlers: incomingMessageHandlers.current,
-		onConnectedHandler: (client) => setMqttClient(client),
 	});
 	return (
 		<>

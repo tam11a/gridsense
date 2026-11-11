@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// GridSense data model. Docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider      = "prisma-client-js"
@@ -68,7 +64,7 @@ model Sensor {
   description String?
 
   room_id     Int
-  room        Room         @relation(fields: [room_id], references: [id])
+  room        Room         @relation(fields: [room_id], references: [id], onDelete: Cascade)
   sensor_data SensorData[]
 
   created_at DateTime @default(now())
@@ -81,13 +77,14 @@ model SensorData {
   id Int @id @default(autoincrement())
 
   sensor_id Int
-  sensor    Sensor @relation(fields: [sensor_id], references: [id])
+  sensor    Sensor @relation(fields: [sensor_id], references: [id], onDelete: Cascade)
 
   temperature Float @default(0)
   humidity    Float @default(0)
 
   created_at DateTime @default(now())
 
+  @@index([sensor_id, created_at])
   @@map("sensor_data")
 }
 
@@ -97,7 +94,7 @@ model Switch {
   description String?
 
   room_id Int
-  room    Room @relation(fields: [room_id], references: [id])
+  room    Room @relation(fields: [room_id], references: [id], onDelete: Cascade)
 
   created_at  DateTime      @default(now())
   updated_at  DateTime      @updatedAt
@@ -110,13 +107,14 @@ model SwitchState {
   id Int @id @default(autoincrement())
 
   switch_id Int
-  switch    Switch @relation(fields: [switch_id], references: [id])
+  switch    Switch @relation(fields: [switch_id], references: [id], onDelete: Cascade)
 
   state  Boolean
   status SwitchStatus
 
   created_at DateTime @default(now())
 
+  @@index([switch_id, created_at])
   @@map("switch_state")
 }
 

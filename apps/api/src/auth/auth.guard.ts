@@ -2,35 +2,40 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { Observable } from 'rxjs';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService, private prisma: PrismaService) {}
+  constructor(
+    private jwtService: JwtService,
+    private prisma: PrismaService,
+    private reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
       throw new UnauthorizedException();
     }
 
-    const payload = await this.jwtService
-      .verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-        maxAge: process.env.JWT_EXPIRE,
-      })
-      .catch(() => {
-        throw new UnauthorizedException();
-      });
+    const payload = await this.jwtService.verifyAsync(token).catch(() => {
+      throw new UnauthorizedException();
+    });
 
-    if (!payload.sub) {
+    if (!payload?.sub) {
       throw new UnauthorizedException();
     }
 
@@ -54,8 +59,9 @@ export class AuthGuard implements CanActivate {
       },
     });
 
+    // 401 (not 404) so the web app clears the stale token and returns to sign-in.
     if (!user)
-      throw new NotFoundException(
+      throw new UnauthorizedException(
         'No user found. Contact administration about your account.',
       );
 

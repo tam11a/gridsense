@@ -20,8 +20,11 @@ export class AuthService {
 
 	setToken(token: string) {
 		setCookie(this.ctx, "access_token", token, {
-			maxAge: 1 * 24 * 60 * 60,
+			maxAge: 7 * 24 * 60 * 60, // matches the API's default JWT_EXPIRE
 			path: "/",
+			sameSite: "lax",
+			secure:
+				typeof window !== "undefined" && window.location.protocol === "https:",
 		});
 		this.listners.forEach((listner) => listner(token));
 	}

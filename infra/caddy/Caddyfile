@@ -1,0 +1,31 @@
+# Single public entry point for GridSense.
+#   /api/*  -> NestJS API (prefix stripped)
+#   /mqtt   -> Mosquitto WebSockets (for the live dashboard)
+#   /*      -> Next.js dashboard
+#
+# GRIDSENSE_DOMAIN=gridsense.example.com gets automatic HTTPS from Let's Encrypt
+# (the domain's DNS must point at this server and ports 80/443 must be open).
+# Leave it unset (":80") for plain HTTP on a local machine.
+
+{$GRIDSENSE_DOMAIN::80} {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy api:4000
+	}
+
+	handle_path /mqtt* {
+		reverse_proxy mqtt:9001
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

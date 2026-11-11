@@ -1,12 +1,21 @@
+/*
+ * NEXT_PUBLIC_* values are inlined at build time. When they are left empty the
+ * app talks to the same origin it was served from (/api and /mqtt behind the
+ * reverse proxy), so one Docker image works on any domain.
+ */
+const sameOriginMqtt = () => {
+	if (typeof window === "undefined") return "";
+	const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+	return `${scheme}://${window.location.host}/mqtt`;
+};
+
 const config = {
-	apiURL: process.env.NEXT_PUBLIC_API_URL,
-	// proxyApiURL: process.env.NEXT_PUBLIC_PROXY_API_URL,
-	// xApiKey: process.env.NEXT_X_API_KEY,
-	// ecryptSecret: process.env.NEXT_ENCRYPTION_SECRET,
-	// mapApiKey: process.env.NEXT_MAP_KEY,
-	nodeEnv: process.env.NEXT_NODE_ENV,
-	mqttBroker: process.env.NEXT_PUBLIC_MQTT_BROKER as string,
-	mqttBase: process.env.NEXT_PUBLIC_MQTT_BROKER_URL as string,
+	apiURL: process.env.NEXT_PUBLIC_API_URL || "/api",
+	get mqttBroker(): string {
+		return process.env.NEXT_PUBLIC_MQTT_BROKER || sameOriginMqtt();
+	},
+	/** Address shown to people wiring up physical devices (plain MQTT/TCP). */
+	mqttBase: process.env.NEXT_PUBLIC_MQTT_BROKER_URL || "",
 };
 
 export default config;

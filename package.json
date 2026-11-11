@@ -1,0 +1,30 @@
+{
+  "name": "gridsense",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GridSense: IoT monitoring and control (NestJS API + Next.js dashboard + MQTT)",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run dev:api & npm run dev:web & wait",
+    "dev:api": "npm run start:dev -w @gridsense/api",
+    "dev:web": "npm run dev -w @gridsense/web",
+    "build": "npm run build -w @gridsense/api && npm run build -w @gridsense/web",
+    "lint": "npm run lint -w @gridsense/api && npm run lint -w @gridsense/web",
+    "test": "npm test -w @gridsense/api",
+    "db:migrate": "npm run db:migrate -w @gridsense/api",
+    "db:seed": "npm run db:seed -w @gridsense/api",
+    "infra:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db mqtt",
+    "up": "docker compose up -d --build",
+    "down": "docker compose down"
+  },
+  "overrides": {
+    "@types/react": "18.3.2",
+    "@types/react-dom": "18.3.0"
+  }
+}

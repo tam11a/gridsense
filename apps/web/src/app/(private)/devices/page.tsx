@@ -13,7 +13,7 @@ export default function Devices() {
 				<CardHeader className="pb-2 text-xl font-semibold">Devices</CardHeader>
 				<CardContent>
 					<CardDescription>
-						Welcome to the devices page! Here you can manage all your devices.
+						Live readings from every GridSense device. Open one to control its switches and see history.
 					</CardDescription>
 				</CardContent>
 			</Card>

@@ -1,0 +1,17 @@
+# Anonymous clients (the browser dashboard): read-only.
+topic read sensor/+/live
+topic read switch/+/response
+topic read room/+/toggle
+topic read ping/#
+
+# The GridSense API.
+user api
+topic readwrite #
+
+# Physical devices.
+user device
+topic write sensor/+/live
+topic write switch/+/response
+topic write room/+/toggle
+topic write ping/#
+topic read switch/+/pending

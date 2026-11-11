@@ -1,16 +1,17 @@
 "use client";
 import { Card } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import useMqtt from "@/hooks/useMQTT";
 import config from "@/lib/config";
 import moment from "moment";
-import { MqttClient } from "mqtt";
 import React from "react";
 import { useLottie } from "lottie-react";
 import pump from "./pump.json";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useSwitchAction } from "@/lib/actions/devices/switch-action";
+import handleResponse from "@/lib/handle-response";
+import { toast } from "sonner";
 
 export default function SwitchConnect({
 	switchData,
@@ -52,9 +53,15 @@ export default function SwitchConnect({
 		},
 	]);
 
-	const mqttClientRef = React.useRef<MqttClient | null>(null);
-	const setMqttClient = (client: MqttClient) => {
-		mqttClientRef.current = client;
+	const { mutateAsync: sendAction, isPending } = useSwitchAction();
+	const send = async (action: boolean) => {
+		const res = await handleResponse(
+			() => sendAction({ id: switchData?.id, action }),
+			[201]
+		);
+		if (!res.status) {
+			toast("Command failed", { description: res.message, important: true });
+		}
 	};
 
 	useMqtt({
@@ -66,7 +73,6 @@ export default function SwitchConnect({
 			reconnectPeriod: 1000,
 		},
 		topicHandlers: incomingMessageHandlers.current,
-		onConnectedHandler: (client) => setMqttClient(client),
 	});
 
 	const { View, play, setDirection } = useLottie(
@@ -101,25 +107,13 @@ export default function SwitchConnect({
 			<Card
 				className={cn(
 					"rounded-none border-t-0 p-3 flex flex-row relative  min-h-[100px]",
-					status ? "bg-lime-50" : "bg-red-50"
+					status
+						? "bg-lime-50 dark:bg-lime-950/40"
+						: "bg-red-50 dark:bg-red-950/40"
 				)}
 			>
 				<div className="flex-1 w-full">
-					<div className="my-2">
-						{/* <Switch
-							disabled={!remote}
-							checked={status}
-							onCheckedChange={async (c: boolean) => {
-								// if (mqttClientRef.current) {
-								// 	mqttClientRef.current.publish(
-								// 		`switch/${switchData?.id}/action`,
-								// 		JSON.stringify({ action: c })
-								// 	);
-								// }
-								setRemoteStatus(c);
-							}}
-						/> */}
-					</div>
+					<div className="my-2" />
 				</div>
 				<div className="absolute bottom-0 right-0">{View}</div>
 			</Card>
@@ -137,31 +131,15 @@ export default function SwitchConnect({
 					<>
 						<Button
 							className="flex-1 bg-lime-600 hover:bg-lime-700 disabled:bg-lime-300"
-							disabled={status || !remote}
-							onClick={async () => {
-								if (mqttClientRef.current) {
-									mqttClientRef.current.publish(
-										`switch/${switchData?.id}/action`,
-										JSON.stringify({ action: true })
-									);
-								}
-								// setRemoteStatus(true);
-							}}
+							disabled={status || !remote || isPending}
+							onClick={() => send(true)}
 						>
 							Start
 						</Button>
 						<Button
 							className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-red-200"
-							disabled={!status || !remote}
-							onClick={async () => {
-								if (mqttClientRef.current) {
-									mqttClientRef.current.publish(
-										`switch/${switchData?.id}/action`,
-										JSON.stringify({ action: false })
-									);
-								}
-								// setRemoteStatus(false);
-							}}
+							disabled={!status || !remote || isPending}
+							onClick={() => send(false)}
 						>
 							Stop
 						</Button>

@@ -1,32 +1,36 @@
-# Base image
-FROM node:22-alpine
+# GridSense API. Build from the repository root:
+#   docker build -f apps/api/Dockerfile -t gridsense-api .
 
-# Create app directory
-WORKDIR /usr/src/app
-
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
-
-# Install app dependencies
-RUN npm install
-
-# Bundle app source
-COPY . .
-
-# Copy the .env file
-COPY .env ./
-
-# Generate prisma client
-RUN npx prisma generate
-
-# Creates a "dist" folder with the production build
+FROM node:22-alpine AS build
+RUN apk add --no-cache openssl
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+# The schema must be present for the postinstall `prisma generate`.
+COPY apps/api/prisma apps/api/prisma
+RUN npm ci --workspace @gridsense/api --include-workspace-root=false --no-audit --no-fund
+COPY apps/api apps/api
+WORKDIR /repo/apps/api
 RUN npm run build
 
-# Run migrations and seed on container startup
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm run start:prod"]
+FROM node:22-alpine AS runtime
+RUN apk add --no-cache openssl tini
+ENV NODE_ENV=production
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY apps/api/prisma apps/api/prisma
+RUN npm ci --workspace @gridsense/api --include-workspace-root=false --omit=dev --no-audit --no-fund \
+ && npm cache clean --force
+WORKDIR /repo/apps/api
+COPY --from=build /repo/apps/api/dist ./dist
 
-# Install openssl mannually
-RUN apk add --no-cache openssl
-
-# Expose the port on which the app will run
+USER node
 EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
+  CMD wget -qO- http://127.0.0.1:4000/health || exit 1
+ENTRYPOINT ["/sbin/tini", "--"]
+# Apply migrations, create the first admin if ADMIN_* is set, then start.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main"]

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { hashPassword } from '../auth/password';
 
 @Injectable()
 export class UsersService {
@@ -14,7 +15,7 @@ export class UsersService {
         first_name,
         last_name,
         email,
-        password,
+        password: await hashPassword(password),
         role: {
           connect: {
             id: role_id,
@@ -78,7 +79,7 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
-    const { first_name, last_name, email, role_id } = updateUserDto;
+    const { first_name, last_name, email, password, role_id } = updateUserDto;
 
     const user = await this.prisma.user.findUnique({
       where: {
@@ -96,6 +97,7 @@ export class UsersService {
         first_name,
         last_name,
         email,
+        ...(password && { password: await hashPassword(password) }),
         ...(role_id && {
           role: {
             connect: {

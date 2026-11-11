@@ -1,0 +1,11 @@
+# Local development: only Postgres and the broker, with ports exposed so the
+# API and dashboard can run on the host with `npm run dev`.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db mqtt
+services:
+  db:
+    ports:
+      - "5432:5432"
+  mqtt:
+    ports:
+      - "1883:1883"
+      - "9001:9001"

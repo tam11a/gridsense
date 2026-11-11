@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 import TokenValidationChecker from "./token-validation-checker";
 import Nav from "./nav";
+import SignOut from "./sign-out";
 
 export default function PrivateLayout({
 	children,
@@ -24,6 +25,7 @@ export default function PrivateLayout({
 
 				<Nav />
 			</main>
+			<SignOut />
 			<div className="fixed bottom-5 right-5 hidden lg:inline">
 				<ModeToggle />
 			</div>

@@ -1,29 +1,52 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+const MAX_CHILDREN = 32;
+
+const clampCount = (value: unknown, field: string) => {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > MAX_CHILDREN) {
+    throw new BadRequestException(
+      `${field} must be a whole number between 0 and ${MAX_CHILDREN}`,
+    );
+  }
+  return n;
+};
 
 @Injectable()
 export class RoomsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createRoomDto: CreateRoomDto) {
-    const { label, description, sensors = 1, switches = 1 } = createRoomDto;
+    const { label, description } = createRoomDto;
+    // Form inputs arrive as strings; clamp so one request cannot create
+    // thousands of rows.
+    const sensors = clampCount(createRoomDto.sensors ?? 1, 'sensors');
+    const switches = clampCount(createRoomDto.switches ?? 1, 'switches');
+    // Labels are unique in the schema, so random 0-999 numbers collided.
+    const tag = () => randomUUID().slice(0, 8);
     const data = await this.prisma.room.create({
       data: {
         label,
         description,
         sensors: {
           createMany: {
-            data: Array.from({ length: sensors }).map(() => ({
-              label: `Sensor ${Math.floor(Math.random() * 1000)}`,
+            data: Array.from({ length: sensors }).map((_, i) => ({
+              label: `${label} / Sensor ${i + 1} (${tag()})`,
             })),
           },
         },
         switches: {
           createMany: {
-            data: Array.from({ length: switches }).map(() => ({
-              label: `Switch ${Math.floor(Math.random() * 1000)}`,
+            data: Array.from({ length: switches }).map((_, i) => ({
+              label: `${label} / Switch ${i + 1} (${tag()})`,
             })),
           },
         },

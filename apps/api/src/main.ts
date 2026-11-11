@@ -8,19 +8,26 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('Project IoT: 101')
+    .setTitle('GridSense API')
     .setDescription(
-      'IoT API Documentation for Project 101 - Users, Roles, Permissions, Devices, etc.',
+      'GridSense IoT API: users, roles, rooms (devices), sensors, switches and charts.',
     )
     .setVersion('1.0')
     .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('/', app, document);
+  SwaggerModule.setup('docs', app, document);
 
-  // CORS
-  app.enableCors();
+  // CORS: comma-separated origins, or every origin when unset (development).
+  const origins = process.env.CORS_ORIGINS?.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: origins?.length ? origins : true });
+
+  app.enableShutdownHooks();
 
   await app.listen(port);
+  console.log(`GridSense API listening on :${port} (docs at /docs)`);
 }
 bootstrap();

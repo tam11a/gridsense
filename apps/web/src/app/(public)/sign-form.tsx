@@ -76,8 +76,6 @@ export function SignForm() {
 		const res = await handleResponse(() => login(values));
 
 		if (res.status) {
-			// Setting cookies
-
 			authService.setToken(res.data.token);
 
 			// Generating Toast
@@ -115,9 +113,9 @@ export function SignForm() {
 		<Form {...form}>
 			<Card className="mx-2">
 				<CardHeader>
-					<CardTitle>Welcome</CardTitle>
+					<CardTitle>GridSense</CardTitle>
 					<CardDescription>
-						Sign in with your organization credentials.
+						Sign in to monitor and control your devices.
 					</CardDescription>
 				</CardHeader>
 				<form onSubmit={form.handleSubmit(onSubmit)}>

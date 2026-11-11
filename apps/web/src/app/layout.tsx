@@ -11,8 +11,9 @@ import { Toaster } from "@/components/ui/toaster";
 const font_sans = Font_Sans({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-	title: "IOT 101",
-	description: "Dashboard for IOT 101",
+	title: { default: "GridSense", template: "%s · GridSense" },
+	description:
+		"GridSense: live sensor readings and remote switch control for your devices.",
 };
 
 export default function RootLayout({

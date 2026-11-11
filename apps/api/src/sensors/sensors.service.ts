@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSensorDto } from './dto/create-sensor.dto';
 import { UpdateSensorDto } from './dto/update-sensor.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SensorsService {
@@ -90,11 +90,13 @@ export class SensorsService {
       data: {
         label,
         description,
-        room: {
-          connect: {
-            id: room_id,
+        ...(room_id && {
+          room: {
+            connect: {
+              id: room_id,
+            },
           },
-        },
+        }),
       },
       select: {
         id: true,

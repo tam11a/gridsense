@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import useMqtt from "@/hooks/useMQTT";
 import config from "@/lib/config";
 import moment from "moment";
-import { MqttClient } from "mqtt";
 import React from "react";
 
 export default function ActiveStatus({
@@ -26,10 +25,6 @@ export default function ActiveStatus({
 		},
 	]);
 
-	const mqttClientRef = React.useRef<MqttClient | null>(null);
-	const setMqttClient = (client: MqttClient) => {
-		mqttClientRef.current = client;
-	};
 
 	useMqtt({
 		uri: config.mqttBroker,
@@ -40,7 +35,6 @@ export default function ActiveStatus({
 			reconnectPeriod: 1000,
 		},
 		topicHandlers: incomingMessageHandlers.current,
-		onConnectedHandler: (client) => setMqttClient(client),
 	});
 
 	React.useEffect(() => {

@@ -3,10 +3,8 @@
 import useMqtt from "@/hooks/useMQTT";
 import config from "@/lib/config";
 import moment from "moment";
-import { MqttClient } from "mqtt";
 import { useRef, useState } from "react";
 import TemperatureChart from "./temp-chart";
-import SensorConnect from "./sensor-connect";
 
 export default function Temperature({ device }: { device: any }) {
 	const [sensors, setSensors] = useState<{
@@ -42,10 +40,6 @@ export default function Temperature({ device }: { device: any }) {
 		})),
 	]);
 
-	const mqttClientRef = useRef<MqttClient | null>(null);
-	const setMqttClient = (client: MqttClient) => {
-		mqttClientRef.current = client;
-	};
 
 	useMqtt({
 		uri: config.mqttBroker,
@@ -56,7 +50,6 @@ export default function Temperature({ device }: { device: any }) {
 			reconnectPeriod: 1000,
 		},
 		topicHandlers: incomingMessageHandlers.current,
-		onConnectedHandler: (client) => setMqttClient(client),
 	});
 	return (
 		<div className="my-3">
@@ -73,10 +66,10 @@ export default function Temperature({ device }: { device: any }) {
 									Sensor #{sensor_id}
 								</p>
 								<h3 className="text-4xl font-semibold">
-									{sensor.temperature || "--.--"}°C
+									{sensor.temperature ?? "--.--"}°C
 								</h3>
 								<p className="text-lg font-semibold">
-									Humidity: {sensor.humidity || "--"}%
+									Humidity: {sensor.humidity ?? "--"}%
 								</p>
 								<p className="text-muted-foreground">
 									Last Updated:{" "}

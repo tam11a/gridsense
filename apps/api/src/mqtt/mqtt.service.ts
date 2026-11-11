@@ -1,9 +1,15 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { connect, MqttClient } from 'mqtt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class MqttService implements OnModuleInit {
+export class MqttService implements OnModuleInit, OnModuleDestroy {
   constructor(private prisma: PrismaService) {}
 
   clientId: string;
@@ -15,16 +21,20 @@ export class MqttService implements OnModuleInit {
   roomTogglePattern = /room\/([^/]+)\/toggle/;
 
   onModuleInit() {
-    this.clientId = `iot101-server-${process.env.NODE_ENV ?? 'development'}`;
+    // A fixed client id made two API instances (or a restart racing the old
+    // session) kick each other off the broker, so add a random suffix.
+    this.clientId = `gridsense-api-${
+      process.env.NODE_ENV ?? 'development'
+    }-${randomUUID().slice(0, 8)}`;
     this.mqttClient = connect(
       process.env.MQTT_BROKER ?? 'mqtt://127.0.0.1:1883',
       {
         clientId: this.clientId,
         clean: true,
         connectTimeout: 4000,
-        keepalive: 1000,
-        // username: this.configService.get<string>('username'),
-        // password: this.configService.get<string>('password'),
+        keepalive: 60,
+        username: process.env.MQTT_USERNAME || undefined,
+        password: process.env.MQTT_PASSWORD || undefined,
         reconnectPeriod: 1000,
         will: {
           topic: `offline/server/${process.env.NODE_ENV ?? 'development'}`,
@@ -46,13 +56,13 @@ export class MqttService implements OnModuleInit {
 
     // this.mqttClient.listeners('connect')
 
-    this.mqttClient.on('error', () => {
+    // mqtt.js already reconnects every reconnectPeriod; calling reconnect()
+    // here as well stacked parallel connection attempts.
+    this.mqttClient.on('error', (err) => {
       console.error(
-        'Error in connecting to MQTT Broker (',
-        process.env.MQTT_BROKER ?? 'mqtt://127.0.0.1:1883',
-        ')',
+        `MQTT error (${process.env.MQTT_BROKER ?? 'mqtt://127.0.0.1:1883'}):`,
+        err?.message,
       );
-      this.mqttClient.reconnect();
     });
 
     this.mqttClient.subscribe(
@@ -112,7 +122,7 @@ export class MqttService implements OnModuleInit {
                   id: switchId,
                 },
               },
-              state: payload_extract.status,
+              state: Boolean(payload_extract.status),
               status: 'SUCCESS',
             },
           });
@@ -125,7 +135,7 @@ export class MqttService implements OnModuleInit {
               id: roomId,
             },
             data: {
-              remote_action: payload_extract.toggle,
+              remote_action: Boolean(payload_extract.toggle),
             },
           });
         }
@@ -134,6 +144,20 @@ export class MqttService implements OnModuleInit {
         return;
       }
     });
+  }
+
+  publishSwitchCommand(switchId: number, action: boolean) {
+    if (!this.mqttClient?.connected) {
+      throw new ServiceUnavailableException('MQTT broker is not connected');
+    }
+    this.mqttClient.publish(
+      `switch/${switchId}/pending`,
+      JSON.stringify({ action }),
+    );
+  }
+
+  onModuleDestroy() {
+    this.mqttClient?.end(true);
   }
 
   async onSensorData(sensor_id: any, temperature: number, humidity: number) {

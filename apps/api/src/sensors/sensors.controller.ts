@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SensorsService } from './sensors.service';
 import { CreateSensorDto } from './dto/create-sensor.dto';
@@ -28,17 +29,20 @@ export class SensorsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.sensorsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.sensorsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSensorDto: UpdateSensorDto) {
-    return this.sensorsService.update(+id, updateSensorDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSensorDto: UpdateSensorDto,
+  ) {
+    return this.sensorsService.update(id, updateSensorDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.sensorsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.sensorsService.remove(id);
   }
 }

@@ -1,11 +1,12 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { hashPassword, isHashed, verifyPassword } from './password';
 
 @Injectable()
 export class AuthService {
@@ -27,29 +28,32 @@ export class AuthService {
       },
     });
 
-    if (!user) {
-      throw new NotFoundException('No user found with this email');
+    // Same message for unknown email and wrong password, so the endpoint
+    // cannot be used to find out which emails have accounts.
+    if (!user || !(await verifyPassword(password, user.password))) {
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Check if the password is correct
-    if (user.password !== password) {
-      throw new BadRequestException(
-        'Invalid password. Please check the password and try again',
+    if (!user.is_active) {
+      throw new UnauthorizedException(
+        'Your account is temporarily suspended. Contact with administration.',
       );
     }
 
+    // Upgrade accounts that still store a plain-text password.
+    if (!isHashed(user.password)) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { password: await hashPassword(password) },
+      });
+    }
+
     // Generate token
-    const token = await this.jwtService.signAsync(
-      {
-        sub: user.id,
-        email: user.email,
-        name: `${user.first_name} ${user.last_name}`,
-      },
-      {
-        secret: process.env.JWT_SECRET,
-        expiresIn: process.env.JWT_EXPIRE,
-      },
-    );
+    const token = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      name: [user.first_name, user.last_name].filter(Boolean).join(' '),
+    });
 
     return {
       message: 'Login successful',

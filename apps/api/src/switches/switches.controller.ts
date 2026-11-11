@@ -6,16 +6,27 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SwitchesService } from './switches.service';
 import { CreateSwitchDto } from './dto/create-switch.dto';
 import { UpdateSwitchDto } from './dto/update-switch.dto';
+import { SwitchActionDto } from './dto/switch-action.dto';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Switches')
 @Controller('switches')
 export class SwitchesController {
   constructor(private readonly switchesService: SwitchesService) {}
+
+  /** Turn a switch on or off. Replaces publishing straight to MQTT from the browser. */
+  @Post(':id/action')
+  action(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() { action }: SwitchActionDto,
+  ) {
+    return this.switchesService.action(id, action);
+  }
 
   @Post()
   create(@Body() createSwitchDto: CreateSwitchDto) {
@@ -28,17 +39,20 @@ export class SwitchesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.switchesService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.switchesService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSwitchDto: UpdateSwitchDto) {
-    return this.switchesService.update(+id, updateSwitchDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSwitchDto: UpdateSwitchDto,
+  ) {
+    return this.switchesService.update(id, updateSwitchDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.switchesService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.switchesService.remove(id);
   }
 }
