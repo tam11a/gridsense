@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- Source for docs/assets/banner.png (1280x640, rendered at 2x). -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1280px; height: 640px; overflow: hidden; font-family: Inter, sans-serif; }
+  .bg { position: absolute; inset: 0;
+    background: radial-gradient(900px 500px at 85% 10%, #19a594 0%, transparent 60%),
+                radial-gradient(700px 500px at 0% 100%, #0a5f57 0%, transparent 60%),
+                linear-gradient(135deg, #0d8a7d 0%, #0b6f66 55%, #0a4f4a 100%); }
+  .dots { position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.14) 1.4px, transparent 1.6px);
+    background-size: 28px 28px; mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); }
+  .pulse { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+  .content { position: absolute; left: 88px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #fff; width: 620px; }
+  .brand { display: flex; align-items: center; gap: 22px; }
+  .word { font-size: 76px; font-weight: 700; letter-spacing: -2.5px; }
+  .word span { color: #9ff3e6; }
+  .tag { margin-top: 26px; font-size: 30px; line-height: 1.3; font-weight: 500; color: rgba(255,255,255,.92); letter-spacing: -.4px; }
+  .chips { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); font-size: 16px; font-weight: 500; }
+  .card { position: absolute; right: 80px; top: 112px; width: 400px; border-radius: 22px; background: rgba(255,255,255,.97);
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.4); padding: 26px 28px; color: #0f172a; }
+  .card2 { position: absolute; right: 300px; top: 420px; width: 250px; border-radius: 18px; background: rgba(255,255,255,.97);
+    box-shadow: 0 24px 50px -18px rgba(0,0,0,.45); padding: 18px 20px; color: #0f172a; display: flex; gap: 14px; align-items: center; }
+  .row { display: flex; justify-content: space-between; align-items: center; }
+  .title { font-weight: 600; font-size: 21px; }
+  .sub { font-size: 14px; color: #64748b; margin-top: 2px; }
+  .online { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #15803d; background: #dcfce7; padding: 5px 11px; border-radius: 999px; }
+  .online i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.2); }
+  .temp { margin-top: 18px; font-size: 56px; font-weight: 600; letter-spacing: -2px; }
+  .temp small { font-size: 24px; color: #64748b; font-weight: 400; margin-left: 3px; letter-spacing: 0; }
+  .hum { font-size: 16px; color: #64748b; margin-left: 14px; }
+  .fan { width: 46px; height: 46px; border-radius: 12px; background: #16a34a; display: grid; place-items: center; }
+  .run { font-weight: 600; color: #15803d; font-size: 17px; }
+</style></head>
+<body>
+  <div class="bg"></div><div class="dots"></div>
+  <svg class="pulse" viewBox="0 0 1280 640" preserveAspectRatio="none">
+    <polyline points="0,590 600,590 640,590 672,540 712,630 744,565 768,590 1280,590" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3" stroke-linejoin="round"/>
+  </svg>
+  <div class="content">
+    <div class="brand">
+      <svg width="92" height="92" viewBox="0 0 32 32">
+        <rect width="32" height="32" rx="9" fill="#ffffff" fill-opacity=".16" stroke="rgba(255,255,255,.35)" stroke-width=".6"/>
+        <g fill="#fff" opacity=".45">
+          <circle cx="9" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/><circle cx="23" cy="9" r="1.5"/>
+          <circle cx="9" cy="16" r="1.5"/><circle cx="16" cy="16" r="1.5"/><circle cx="23" cy="16" r="1.5"/>
+          <circle cx="9" cy="23" r="1.5"/><circle cx="16" cy="23" r="1.5"/><circle cx="23" cy="23" r="1.5"/>
+        </g>
+        <polyline points="4.5,17 10.5,17 13,10.5 17.5,22.5 20,15 22,17 27.5,17" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="word">Grid<span>Sense</span></div>
+    </div>
+    <div class="tag">Live monitoring and remote control<br>for ponds, tanks and rooms.</div>
+    <div class="chips">
+      <div class="chip">Live MQTT telemetry</div><div class="chip">Remote switching</div><div class="chip">Role-based access</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div><div class="title">Pond A</div><div class="sub">North field · 0.8 ha</div></div><div class="online"><i></i>Online</div></div>
+    <div class="row" style="justify-content:flex-start;align-items:baseline"><div class="temp">27.9<small>°C</small></div><div class="hum">💧 64%</div></div>
+    <svg viewBox="0 0 344 90" width="344" height="90" style="margin-top:10px;display:block">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d8a7d" stop-opacity=".28"/><stop offset="1" stop-color="#0d8a7d" stop-opacity="0"/></linearGradient></defs>
+      <path d="M0,58 C30,52 50,30 80,28 S130,20 160,34 S210,72 240,70 S290,40 344,30 L344,90 L0,90 Z" fill="url(#g)"/>
+      <path d="M0,58 C30,52 50,30 80,28 S130,20 160,34 S210,72 240,70 S290,40 344,30" fill="none" stroke="#0d8a7d" stroke-width="3" stroke-linecap="round"/>
+      <path d="M0,40 C40,44 80,38 120,42 S200,30 240,34 S300,40 344,36" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5 4" opacity=".7"/>
+    </svg>
+  </div>
+  <div class="card2">
+    <div class="fan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"/><path d="M12 12v.01"/></svg></div>
+    <div><div style="font-weight:600;font-size:16px">Aerator 1</div><div class="run">Running</div></div>
+  </div>
+</body></html>

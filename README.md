@@ -1,136 +1,251 @@
-# GridSense
+<p align="center">
+  <img src="docs/assets/banner.png" alt="GridSense: live monitoring and remote control for ponds, tanks and rooms" width="100%">
+</p>
 
-Monitor and control IoT devices in real time. Sensors stream temperature and
-humidity over MQTT, the dashboard shows live readings and history, and
-operators start/stop switches (aerators, pumps) remotely, unless a device
-has been put under manual control on site.
+<p align="center">
+  <a href="https://github.com/tam11a/gridsense/actions/workflows/ci.yml"><img src="https://github.com/tam11a/gridsense/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white" alt="Next.js 14">
+  <img src="https://img.shields.io/badge/NestJS-10-E0234E?logo=nestjs&logoColor=white" alt="NestJS 10">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/MQTT-Mosquitto_2-660066?logo=eclipsemosquitto&logoColor=white" alt="Mosquitto 2">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose">
+</p>
 
-GridSense merges the former `iot-101-backend` and `iot-101-frontend`
-repositories. Their full git history is kept under `apps/api` and `apps/web`.
+<p align="center">
+  <a href="https://gridsense.shakiulkarim.tech"><b>Live app</b></a> ·
+  <a href="docs/GridSense-Device-Integration-Guide.pdf"><b>Device guide (PDF)</b></a> ·
+  <a href="https://gridsense.shakiulkarim.tech/api/docs"><b>API docs</b></a> ·
+  <a href="docs/CHANGELOG.md"><b>Changelog</b></a>
+</p>
 
+---
+
+GridSense watches over field sites such as fish ponds, hatchery tanks and
+store rooms. Sensors stream temperature and humidity over MQTT, the dashboard
+shows them live with history, and operators start and stop aerators and
+pumps remotely. Each command is confirmed by the device, and remote control
+is blocked while someone runs the site in manual mode.
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Deploy](#deploy)
+- [Connecting devices](#connecting-devices)
+- [Roles](#roles)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Operations](#operations)
+- [Project structure](#project-structure)
+- [Security notes](#security-notes)
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/overview.png" alt="Overview with live stats and a needs-attention list"><br><sub><b>Overview:</b> live status across every site, plus what needs attention.</sub></td>
+    <td width="50%"><img src="docs/assets/screenshots/device.png" alt="Device page with switches and a sensor chart"><br><sub><b>Device:</b> start and stop switches, with 24-hour temperature and humidity.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/connect.png" alt="Connect dialog listing IDs and MQTT topics"><br><sub><b>Connect:</b> every ID and topic a hardware engineer needs.</sub></td>
+    <td width="50%"><img src="docs/assets/screenshots/device-dark.png" alt="Device page in dark mode"><br><sub><b>Dark mode</b>, following the system setting or chosen per user.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/assets/screenshots/mobile.png" alt="Overview and device pages on a phone"><br><sub><b>Mobile:</b> the full app on a phone, with bottom navigation.</sub></td>
+  </tr>
+</table>
+
+## Features
+
+| | |
+| --- | --- |
+| **Live readings** | Temperature and humidity pushed over MQTT and shown instantly; online/offline from device pings. |
+| **Remote control** | Start/stop switches from the dashboard. The UI waits for the device to confirm and warns if it doesn't. |
+| **Manual mode** | A device can hand control to on-site staff; remote commands are refused until it hands back. |
+| **History** | 1 h / 24 h / 7 d / 30 d charts, averaged server-side so long ranges stay fast; CSV export. |
+| **Device management** | Add devices, sensors and switches, rename them, and get connection details to hand to installers. |
+| **Team and roles** | Administrator, Operator and Viewer roles, enforced by the API; invite, deactivate and remove members. |
+| **Self-hosted** | One `docker compose up` on any Linux server, with automatic HTTPS. |
+
+## How it works
+
+```mermaid
+flowchart LR
+  subgraph Site
+    D["Devices<br/>sensors · relays"]
+  end
+  subgraph Server["GridSense server (Docker Compose)"]
+    P["Caddy<br/>HTTPS"]
+    W["Next.js<br/>dashboard"]
+    A["NestJS<br/>API"]
+    B[("Mosquitto<br/>MQTT")]
+    DB[("PostgreSQL")]
+  end
+  U["Browser"]
+
+  D -- "MQTT :1883<br/>readings, pings, switch state" --> B
+  B -- "switch commands" --> D
+  U -- "HTTPS" --> P
+  P -- "/" --> W
+  P -- "/api" --> A
+  P -- "/mqtt (WebSocket)" --> B
+  A <-- "subscribe / publish" --> B
+  A --> DB
 ```
-gridsense/
-├── apps/
-│   ├── api/        NestJS + Prisma (PostgreSQL) REST API and MQTT ingest
-│   └── web/        Next.js 14 dashboard (shadcn/ui, React Query, live MQTT over WebSockets)
-├── infra/
-│   ├── caddy/      Reverse proxy: automatic HTTPS, /api → API, /mqtt → broker WebSockets, / → web
-│   └── mosquitto/  MQTT broker config (+ optional auth/ACL guide)
-├── docker-compose.yml       Production stack (db, mqtt, api, web, Caddy proxy)
-└── docker-compose.dev.yml   Exposes db/broker ports for local development
-```
 
-## How it fits together
+- Devices publish readings and state to Mosquitto. The API stores them in
+  PostgreSQL, and browsers receive them live over a WebSocket at `/mqtt`.
+- Browsers **never** send commands to the broker. A switch command goes to
+  `POST /api/switches/:id/action`, which checks the user's role and manual
+  mode before publishing `switch/<id>/pending`.
+- Caddy is the only public web entry point. The API, dashboard and database
+  aren't exposed directly.
 
-```
- devices ──MQTT:1883──► Mosquitto ◄──wss /mqtt── browser (live readings, read-only)
-                           ▲  │
-          switch/<id>/pending │ sensor/<id>/live, switch/<id>/response, room/<id>/toggle
-                           │  ▼
- browser ──HTTPS /api──► NestJS API ──► PostgreSQL
-```
+## Deploy
 
-| Topic                  | Publisher | Payload                         | Effect                                   |
-| ---------------------- | --------- | ------------------------------- | ---------------------------------------- |
-| `sensor/<id>/live`     | device    | `{"temp":24.1,"hum":61,"ref":<id>}` | stored as a reading; shown live         |
-| `switch/<id>/pending`  | API       | `{"action":true}`               | device should switch on/off              |
-| `switch/<id>/response` | device    | `{"status":true}`               | stored as the switch's current state     |
-| `room/<id>/toggle`     | device    | `{"toggle":false}`              | `false` = manual control, remote disabled |
-| `ping/<id>`            | device    | anything                        | dashboard shows Online for 10 s          |
-
-Switch commands come from `POST /api/switches/:id/action`, which requires a
-login and refuses (409) while the device is under manual control.
-
-## Deploy (any Linux host with Docker)
-
-Production runs at **https://gridsense.shakiulkarim.tech**.
+Any Linux host with Docker and a domain pointing at it. Open ports 80, 443 and 1883.
 
 ```bash
-git clone <this repo> gridsense && cd gridsense
+git clone git@github.com:tam11a/gridsense.git && cd gridsense
 cp .env.example .env
 ```
 
-Fill in `.env`: `POSTGRES_PASSWORD`, `JWT_SECRET` (`openssl rand -hex 32`),
-`ADMIN_EMAIL` / `ADMIN_PASSWORD`, and set `GRIDSENSE_DOMAIN` to a domain whose
-DNS points at the server.
+Fill in `.env` (see [Configuration](#configuration)), then:
 
 ```bash
 docker compose up -d --build
 ```
 
-Caddy is the only public web entry point and gets and renews the HTTPS
-certificate by itself. The API, dashboard and database are not exposed.
+| URL | |
+| --- | --- |
+| `https://<domain>` | Dashboard |
+| `https://<domain>/api/docs` | Swagger API docs |
+| `https://<domain>/api/health` | Health check (database and broker) |
+| `mqtt://<domain>:1883` | Device connection |
 
-- Dashboard: `https://<domain>`
-- API docs (Swagger): `https://<domain>/api/docs`
-- Health: `https://<domain>/api/health`
-- Devices connect to `mqtt://<domain>:1883`
+On every start the API applies database migrations, creates the default roles,
+and creates the first admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` if that account
+doesn't exist. To update, pull and run `docker compose up -d --build` again.
 
-Open ports 80, 443 and 1883. Migrations run and the admin account is created
-on every API start (an existing admin is never overwritten). To update after
-pulling new code: `docker compose up -d --build`.
+## Connecting devices
 
-## Local development
+Send the hardware engineer the **[Device integration guide](docs/GridSense-Device-Integration-Guide.pdf)**.
+It covers topics, payloads, test commands for Windows, macOS and Linux, and
+ready-to-run [Python](docs/examples/gridsense_device.py) and
+[ESP32](docs/examples/gridsense_esp32.ino) examples. Each device page's
+**Connect** button shows the exact IDs and topics for that device.
+
+| Topic | Direction | Payload | Meaning |
+| --- | --- | --- | --- |
+| `sensor/<sensorId>/live` | device → GridSense | `{"temp":26.4,"hum":61,"ref":<sensorId>}` | A reading. `ref` must equal the sensor ID. |
+| `ping/<deviceId>` | device → GridSense | `{"status":"online"}` | Every 5 s. Online while pings arrive. |
+| `switch/<switchId>/pending` | GridSense → device | `{"action":true}` | Turn on (`true`) or off (`false`). |
+| `switch/<switchId>/response` | device → GridSense | `{"status":true}` | The relay's real state, after every command and on connect. |
+| `room/<deviceId>/toggle` | device → GridSense | `{"toggle":false}` | `false` = manual mode on site, `true` = remote allowed. |
+
+## Roles
+
+| Role | Permissions | Can do |
+| --- | --- | --- |
+| **Administrator** | `*` | Everything, including team members |
+| **Operator** | `devices.control` | View everything, start and stop switches |
+| **Viewer** | none | View only |
+
+Admins manage the team under **Settings → Team**. Nobody can deactivate,
+demote or delete their own account, so a team can't lock itself out. A custom
+role can combine `devices.manage` (add/edit/delete devices),
+`devices.control` and `users.manage`.
+
+## Configuration
+
+All settings live in the root `.env` (template: [`.env.example`](.env.example)).
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `GRIDSENSE_DOMAIN` | yes | Public hostname. Caddy gets an HTTPS certificate for it. Use `:80` for plain HTTP locally. |
+| `POSTGRES_PASSWORD` | yes | Database password (`openssl rand -hex 24`). |
+| `JWT_SECRET` | yes | Session signing key, 32+ characters (`openssl rand -hex 32`). |
+| `JWT_EXPIRE` | | Session length, default `7d`. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` | first run | First administrator; never overwritten later. |
+| `PUBLIC_MQTT_URL` | | Broker address shown in the Connect dialog, e.g. `mqtt://<domain>:1883`. |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | | API's broker login, once broker auth is enabled. |
+| `MQTT_PORT` | | Public device port, default `1883`. |
+| `CORS_ORIGINS` | | Extra origins allowed to call the API directly. |
+
+## Development
 
 Requires Node 20+ and Docker (for Postgres and the broker).
 
 ```bash
 npm install
-cp .env.example .env                       # set POSTGRES_PASSWORD=gridsense, JWT_SECRET, ADMIN_*
-npm run infra:up                           # postgres :5432, mosquitto :1883 / ws :9001
-cp apps/api/.env.example apps/api/.env     # same JWT_SECRET / ADMIN_*; DATABASE_URL password = POSTGRES_PASSWORD
+cp .env.example .env                        # set POSTGRES_PASSWORD, JWT_SECRET, ADMIN_*
+npm run infra:up                            # Postgres :5432, Mosquitto :1883 / ws :9001
+cp apps/api/.env.example apps/api/.env      # same secrets; DATABASE_URL uses POSTGRES_PASSWORD
 cp apps/web/.env.example apps/web/.env.local
 npm run db:migrate && npm run db:seed
-npm run dev                                # API :4000 (docs /docs), web :3000
+npm run dev                                 # API on :4000 (docs at /docs), web on :3000
 ```
 
-| Script              | What it does                         |
-| ------------------- | ------------------------------------ |
-| `npm run dev`       | API (watch) + web (dev) together     |
-| `npm run build`     | Production build of both apps        |
-| `npm test`          | API unit tests                       |
-| `npm run lint`      | Lint both apps                       |
-| `npm run up`/`down` | Full Docker stack                    |
+| Script | |
+| --- | --- |
+| `npm run dev` | API (watch) and web (dev server) together |
+| `npm run build` | Production build of both apps |
+| `npm test` | API unit tests |
+| `npm run lint` | Lint both apps |
+| `npm run db:migrate` / `db:seed` | Apply migrations / create roles and the first admin |
+| `npm run up` / `down` | Start / stop the full Docker stack |
 
-## What changed from iot-101
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, tests,
+both builds and both Docker images on every push and pull request.
 
-Security
-- Every API route needs a valid JWT; before, only `/auth/validate` did, so
-  anyone could list or create users, delete rooms or read data.
-- Passwords are stored as bcrypt hashes. Old plain-text passwords still work
-  once and are upgraded to a hash on that login.
-- Login gives the same error for an unknown email and a wrong password.
-- The seed file no longer contains a real email and password. The first admin
-  comes from `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
-- No committed JWT secret. The API refuses to start without a 32+ character `JWT_SECRET`.
-- The browser no longer publishes switch commands to the broker. They go
-  through the authenticated API, which respects manual control.
-- The Docker image no longer bakes `.env` in and runs as a non-root user.
-  Only the Caddy proxy and the device MQTT port are public. Next.js was upgraded to 14.2.35 for security patches.
+## Operations
 
-Bugs
-- Deleting a room failed with a foreign-key error once it had sensors or
-  switches. Room deletes now cascade to sensors, switches and their history
-  (migration `20261110000000_cascade_deletes_and_reading_indexes`, which also
-  adds indexes for the latest-reading lookups).
-- New rooms got random `Sensor 0-999` labels, which collide with the unique
-  constraint. Labels are now derived from the room name.
-- Updating a sensor or switch without `room_id` crashed.
-- The web Docker image was built without `NEXT_PUBLIC_API_URL`, so the
-  deployed dashboard could not reach the API. It now uses same-origin `/api`
-  and `/mqtt` behind the proxy.
-- Every device card and switch opened its own MQTT WebSocket and never closed
-  it. The dashboard now shares one connection.
-- Readings of 0 °C / 0 % showed as `--`.
-- There was no way to sign out.
-- The 16 generated test stubs didn't compile or run. They are replaced with tests
-  of auth, room creation and switch commands.
+**Back up the database**
 
-## Still open
+```bash
+docker compose exec -T db pg_dump -U gridsense -d gridsense | gzip > gridsense-$(date +%F).sql.gz
+```
 
-- The broker allows anonymous clients, so device firmware keeps working.
-  Anyone who can reach port 1883 can publish fake readings or switch
-  commands. Once devices can log in, follow `infra/mosquitto/README.md` to
-  require credentials and apply the included ACL.
-- Roles and permissions are stored but not enforced: any signed-in user can
-  manage users.
+**Restore a backup** (replaces current data):
+
+```bash
+gunzip -c gridsense-YYYY-MM-DD.sql.gz | docker compose exec -T db psql -U gridsense -d gridsense
+```
+
+**Logs:** `docker compose logs -f api` (likewise `web`, `mqtt`, `proxy`).
+
+## Project structure
+
+```
+gridsense/
+├── apps/
+│   ├── api/                 NestJS + Prisma: REST API, auth, roles, MQTT ingest
+│   │   ├── prisma/          schema, migrations, seed (roles + first admin)
+│   │   └── src/             auth, rooms (devices), sensors, switches, chart, users, roles, mqtt
+│   └── web/                 Next.js 14 dashboard (App Router, Tailwind, shadcn/ui, React Query)
+│       └── src/
+│           ├── app/         sign-in, overview, devices, device detail, settings
+│           ├── components/  app shell, brand, device cards, switch cards, charts, dialogs
+│           └── hooks/       live MQTT hooks (presence, readings, switch state)
+├── docs/                    device integration guide (PDF), firmware examples, changelog, assets
+├── infra/
+│   ├── caddy/               reverse proxy + automatic HTTPS
+│   └── mosquitto/           broker config and how to require device logins
+├── docker-compose.yml       production stack
+└── docker-compose.dev.yml   exposes Postgres and broker ports for local development
+```
+
+## Security notes
+
+- Passwords are bcrypt-hashed; sessions are signed JWTs; every write endpoint
+  checks the user's role.
+- **The MQTT broker currently accepts anonymous clients**, so existing firmware
+  keeps working. Anyone who can reach port 1883 could publish fake readings or
+  switch commands. Once devices support credentials, follow
+  [`infra/mosquitto/README.md`](infra/mosquitto/README.md) to require logins
+  and apply the included ACL.
+
+---
+
+<sub>GridSense grew out of the 2024 <code>iot-101</code> backend and frontend projects. Their full history is kept in this repository. See the <a href="docs/CHANGELOG.md">changelog</a>.</sub>
