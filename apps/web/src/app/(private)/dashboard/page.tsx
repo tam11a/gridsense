@@ -74,7 +74,7 @@ export default function OverviewPage() {
 	const [adding, setAdding] = useState(false);
 	const now = useNow(5_000);
 
-	const presence = usePresence(devices.map((d) => d.id));
+	const presence = usePresence(devices);
 	const sensors = devices.flatMap((d) => d.sensors);
 	const switches = devices.flatMap((d) => d.switches);
 	const reading = useLiveReadings(sensors);
@@ -91,7 +91,7 @@ export default function OverviewPage() {
 	const attention = devices.flatMap((d) => {
 		const items: { key: string; icon: React.ReactNode; text: string }[] = [];
 		if (presence(d.id) === "offline")
-			items.push({ key: "off", icon: <Wifi className="h-4 w-4" />, text: "Offline: no ping in the last 10 s" });
+			items.push({ key: "off", icon: <Wifi className="h-4 w-4" />, text: "Offline: nothing heard in the last 10 s" });
 		if (!d.remote_action)
 			items.push({ key: "man", icon: <Hand className="h-4 w-4" />, text: "Manual control on site; remote start/stop is blocked" });
 		d.sensors.forEach((s) => {

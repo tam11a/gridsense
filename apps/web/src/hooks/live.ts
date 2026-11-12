@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import useMqtt from "./useMQTT";
 import config from "@/lib/config";
-import type { Reading, Sensor, Switch } from "@/lib/types";
+import type { Device, Reading, Sensor, Switch } from "@/lib/types";
 
 /** A device counts as online for this long after its last ping. */
 export const ONLINE_WINDOW_MS = 10_000;
@@ -47,20 +47,49 @@ export function useNow(ms = 1000) {
 
 export type Presence = "checking" | "online" | "offline";
 
-/** Online/offline per device, from ping/<deviceId>. */
-export function usePresence(deviceIds: number[]) {
+type PresenceDevice = Pick<Device, "id"> & {
+	sensors?: Pick<Sensor, "id">[];
+	switches?: Pick<Switch, "id">[];
+};
+
+/**
+ * Online/offline per device. Any non-retained message the device publishes
+ * counts as a sign of life: ping/<deviceId>, room/<deviceId>/toggle, and
+ * sensor/<sensorId>/live or switch/<switchId>/response for its sensors and
+ * switches. So a device that sends readings but no pings still shows online.
+ */
+export function usePresence(devices: PresenceDevice[]) {
 	const [lastSeen, setLastSeen] = useState<Record<number, number>>({});
 	const [since] = useState(() => Date.now());
 	const now = useNow(1000);
 
-	useTopics(
-		deviceIds.map((id) => `ping/${id}`),
-		(topic, _payload, retained) => {
-			if (retained) return;
-			const id = Number(topic.split("/")[1]);
-			setLastSeen((prev) => ({ ...prev, [id]: Date.now() }));
-		}
-	);
+	const owner = useMemo(() => {
+		const map = new Map<string, number>();
+		devices.forEach((d) => {
+			map.set(`ping/${d.id}`, d.id);
+			map.set(`room/${d.id}/toggle`, d.id);
+			d.sensors?.forEach((s) => map.set(`sensor/${s.id}/live`, d.id));
+			d.switches?.forEach((s) => map.set(`switch/${s.id}/response`, d.id));
+		});
+		return map;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [
+		devices
+			.map(
+				(d) =>
+					`${d.id}:${d.sensors?.map((s) => s.id).join(",")}:${d.switches
+						?.map((s) => s.id)
+						.join(",")}`
+			)
+			.join("|"),
+	]);
+
+	useTopics(Array.from(owner.keys()), (topic, _payload, retained) => {
+		if (retained) return;
+		const id = owner.get(topic);
+		if (id === undefined) return;
+		setLastSeen((prev) => ({ ...prev, [id]: Date.now() }));
+	});
 
 	return (id: number): Presence => {
 		const seen = lastSeen[id];

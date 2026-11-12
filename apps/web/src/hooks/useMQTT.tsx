@@ -1,6 +1,6 @@
 import type { IClientOptions, MqttClient } from "mqtt";
 import MQTT from "mqtt";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 type Handler = (message: { topic: string; payload: any; packet: any }) => void;
 
@@ -20,11 +20,39 @@ interface useMqttProps {
 let shared: { uri: string; client: MqttClient } | null = null;
 const listeners = new Map<string, Set<Handler>>();
 
+/** Connection state of the shared client, for the "live updates lost" banner. */
+export type BrokerStatus = {
+	/** False until a page first opens a broker connection. */
+	started: boolean;
+	connected: boolean;
+	uri: string;
+	error: string | null;
+};
+
+let status: BrokerStatus = { started: false, connected: false, uri: "", error: null };
+const statusSubs = new Set<() => void>();
+const setStatus = (next: Partial<BrokerStatus>) => {
+	status = { ...status, ...next };
+	statusSubs.forEach((fn) => fn());
+};
+const SERVER_STATUS: BrokerStatus = status;
+const subscribeStatus = (fn: () => void) => {
+	statusSubs.add(fn);
+	return () => {
+		statusSubs.delete(fn);
+	};
+};
+
+export function useBrokerStatus(): BrokerStatus {
+	return useSyncExternalStore(subscribeStatus, () => status, () => SERVER_STATUS);
+}
+
 const getClient = (uri: string, options: IClientOptions) => {
 	if (shared && shared.uri === uri) return shared.client;
 	shared?.client.end(true);
 
 	const client = MQTT.connect(uri, options);
+	setStatus({ started: true, connected: false, uri, error: null });
 	client.on("message", (topic, raw, packet) => {
 		const handlers = listeners.get(topic);
 		if (!handlers?.size) return;
@@ -37,7 +65,14 @@ const getClient = (uri: string, options: IClientOptions) => {
 		handlers.forEach((h) => h({ topic, payload, packet }));
 	});
 	// mqtt.js reconnects by itself (reconnectPeriod); no manual reconnect here.
+	client.on("close", () => {
+		if (shared?.client === client) setStatus({ connected: false });
+	});
+	client.on("error", (err) => {
+		if (shared?.client === client) setStatus({ error: err?.message || String(err) });
+	});
 	client.on("connect", () => {
+		if (shared?.client === client) setStatus({ connected: true, error: null });
 		// Clean sessions drop subscriptions on reconnect, so restore them.
 		const topics = Array.from(listeners.keys());
 		if (topics.length) client.subscribe(topics);

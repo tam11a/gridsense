@@ -60,7 +60,7 @@ is blocked while someone runs the site in manual mode.
 
 | | |
 | --- | --- |
-| **Live readings** | Temperature and humidity pushed over MQTT and shown instantly; online/offline from device pings. |
+| **Live readings** | Temperature and humidity pushed over MQTT and shown instantly; online/offline from device pings or any other message the device sends. |
 | **Remote control** | Start/stop switches from the dashboard. The UI waits for the device to confirm and warns if it doesn't. |
 | **Manual mode** | A device can hand control to on-site staff; remote commands are refused until it hands back. |
 | **History** | 1 h / 24 h / 7 d / 30 d charts, averaged server-side so long ranges stay fast; CSV export. |
@@ -139,7 +139,7 @@ ready-to-run [Python](docs/examples/gridsense_device.py) and
 | Topic | Direction | Payload | Meaning |
 | --- | --- | --- | --- |
 | `sensor/<sensorId>/live` | device → GridSense | `{"temp":26.4,"hum":61,"ref":<sensorId>}` | A reading. `ref` must equal the sensor ID. |
-| `ping/<deviceId>` | device → GridSense | `{"status":"online"}` | Every 5 s. Online while pings arrive. |
+| `ping/<deviceId>` | device → GridSense | `{"status":"online"}` | Every 5 s. Online while pings (or any other message from the device) arrive. |
 | `switch/<switchId>/pending` | GridSense → device | `{"action":true}` | Turn on (`true`) or off (`false`). |
 | `switch/<switchId>/response` | device → GridSense | `{"status":true}` | The relay's real state, after every command and on connect. |
 | `room/<deviceId>/toggle` | device → GridSense | `{"toggle":false}` | `false` = manual mode on site, `true` = remote allowed. |
@@ -223,6 +223,7 @@ gridsense/
 │   ├── api/                 NestJS + Prisma: REST API, auth, roles, MQTT ingest
 │   │   ├── prisma/          schema, migrations, seed (roles + first admin)
 │   │   └── src/             auth, rooms (devices), sensors, switches, chart, users, roles, mqtt
+│   ├── raspberry-pi/        Python device client (paho-mqtt, DHT22, GPIO switches, pings)
 │   └── web/                 Next.js 14 dashboard (App Router, Tailwind, shadcn/ui, React Query)
 │       └── src/
 │           ├── app/         sign-in, overview, devices, device detail, settings

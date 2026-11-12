@@ -21,7 +21,7 @@ export default function DevicesPage() {
 	const [adding, setAdding] = useState(false);
 	const now = useNow(15_000);
 
-	const presence = usePresence(devices.map((d) => d.id));
+	const presence = usePresence(devices);
 	const reading = useLiveReadings(devices.flatMap((d) => d.sensors));
 	const switchState = useLiveSwitches(devices.flatMap((d) => d.switches));
 

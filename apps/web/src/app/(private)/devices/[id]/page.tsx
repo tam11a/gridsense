@@ -97,7 +97,7 @@ export default function DevicePage() {
 	const { can } = useUser();
 	const now = useNow(5_000);
 
-	const presence = usePresence(device ? [device.id] : []);
+	const presence = usePresence(device ? [device] : []);
 	const reading = useLiveReadings(device?.sensors ?? []);
 	const switchState = useLiveSwitches(device?.switches ?? []);
 	const remote = useRemoteControl(device?.id ?? 0, device?.remote_action ?? true);

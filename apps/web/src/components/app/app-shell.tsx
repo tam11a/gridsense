@@ -18,6 +18,7 @@ import {
 	ChevronsUpDown,
 } from "lucide-react";
 import { Logo, LogoMark } from "@/components/brand/logo";
+import { LiveConnectionBanner } from "@/components/app/live-banner";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -182,6 +183,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
 			<main className="lg:pl-64">
 				<div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
+					<LiveConnectionBanner />
 					{children}
 				</div>
 			</main>
