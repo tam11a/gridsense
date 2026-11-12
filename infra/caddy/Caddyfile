@@ -14,8 +14,12 @@
 		reverse_proxy api:4000
 	}
 
+	# The broker never needs the dashboard's login cookie, and Mosquitto's
+	# WebSocket listener stalls on handshakes with headers over ~4 KB.
 	handle_path /mqtt* {
-		reverse_proxy mqtt:9001
+		reverse_proxy mqtt:9001 {
+			header_up -Cookie
+		}
 	}
 
 	handle {

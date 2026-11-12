@@ -51,7 +51,17 @@ const getClient = (uri: string, options: IClientOptions) => {
 	if (shared && shared.uri === uri) return shared.client;
 	shared?.client.end(true);
 
-	const client = MQTT.connect(uri, options);
+	// mqtt.js 5.6.2 copies only host/port/protocol/query/auth from the URL and
+	// drops the path, so wss://host/mqtt silently became wss://host/ (the Next
+	// app, which hangs up). Pass the path explicitly.
+	let path: string | undefined;
+	try {
+		const u = new URL(uri);
+		path = u.pathname + u.search;
+	} catch {
+		path = undefined;
+	}
+	const client = MQTT.connect(uri, path ? { path, ...options } : options);
 	setStatus({ started: true, connected: false, uri, error: null });
 	client.on("message", (topic, raw, packet) => {
 		const handlers = listeners.get(topic);
