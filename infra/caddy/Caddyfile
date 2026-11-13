@@ -33,3 +33,36 @@
 		-Server
 	}
 }
+
+# GridSense 1.x (iot-101) on its own hostname: legacy-api, legacy-web and the
+# shared broker. Unset locally, it answers on legacy.localhost.
+{$GRIDSENSE_LEGACY_DOMAIN:legacy.localhost} {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy legacy-api:4000
+	}
+
+	# The 1.x dashboard uses mqtt.js 5.6.2, which drops the URL path, so its
+	# WebSocket arrives at "/" rather than "/mqtt". Accept both.
+	@mqtt_ws {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @mqtt_ws {
+		reverse_proxy mqtt:9001 {
+			header_up -Cookie
+		}
+	}
+
+	handle {
+		reverse_proxy legacy-web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

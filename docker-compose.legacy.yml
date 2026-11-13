@@ -1,0 +1,45 @@
+# GridSense 1.x (iot-101) API and dashboard, served next to 2.x at
+# https://<GRIDSENSE_LEGACY_DOMAIN>. It shares the broker and Postgres server
+# with 2.x but has its own database (gridsense_legacy), so the two APIs never
+# double-store the same readings.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.legacy.yml up -d --build
+# (or set COMPOSE_FILE=docker-compose.yml:docker-compose.legacy.yml in .env)
+
+services:
+  legacy-api:
+    image: gridsense-legacy-api
+    build:
+      context: legacy/api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://gridsense:${POSTGRES_PASSWORD}@db:5432/gridsense_legacy
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      MQTT_BROKER: mqtt://mqtt:1883
+    depends_on:
+      db:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+
+  legacy-web:
+    image: gridsense-legacy-web
+    build:
+      context: legacy/web
+      args:
+        NEXT_PUBLIC_API_URL: https://${GRIDSENSE_LEGACY_DOMAIN:?set GRIDSENSE_LEGACY_DOMAIN in .env}/api/
+        NEXT_PUBLIC_MQTT_BROKER: wss://${GRIDSENSE_LEGACY_DOMAIN}/mqtt
+        NEXT_PUBLIC_MQTT_BROKER_URL: ${PUBLIC_MQTT_URL:-}
+    restart: unless-stopped
+    depends_on:
+      - legacy-api
+
+  proxy:
+    environment:
+      GRIDSENSE_LEGACY_DOMAIN: ${GRIDSENSE_LEGACY_DOMAIN}
+    depends_on:
+      - legacy-web
+      - legacy-api

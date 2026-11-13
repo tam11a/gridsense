@@ -128,6 +128,22 @@ On every start the API applies database migrations, creates the default roles,
 and creates the first admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD` if that account
 doesn't exist. To update, pull and run `docker compose up -d --build` again.
 
+### Running GridSense 1.x alongside
+
+[`legacy/`](legacy) holds the 1.x (iot-101) API and dashboard as they were at
+the merge, with three changes: login accepts the bcrypt passwords that 2.x
+stores, every API route except login requires a token, and the old seed (a
+hard-coded account) is not run. To serve it on its own hostname, set
+`GRIDSENSE_LEGACY_DOMAIN` and
+`COMPOSE_FILE=docker-compose.yml:docker-compose.legacy.yml` in `.env`, then
+run `docker compose up -d --build`. It shares the broker but uses its own
+database, `gridsense_legacy`, which you create once by copying the main one:
+
+```bash
+docker compose exec db createdb -U gridsense gridsense_legacy
+docker compose exec -T db sh -c 'pg_dump -U gridsense gridsense | psql -q -U gridsense gridsense_legacy'
+```
+
 ## Connecting devices
 
 Send the hardware engineer the **[Device integration guide](docs/GridSense-Device-Integration-Guide.pdf)**.
@@ -233,6 +249,7 @@ gridsense/
 ├── infra/
 │   ├── caddy/               reverse proxy + automatic HTTPS
 │   └── mosquitto/           broker config and how to require device logins
+├── legacy/                  GridSense 1.x API and dashboard (served via docker-compose.legacy.yml)
 ├── docker-compose.yml       production stack
 └── docker-compose.dev.yml   exposes Postgres and broker ports for local development
 ```
