@@ -1,12 +1,21 @@
-  GNU nano 7.2                                   iot-101.service *                                           
+# systemd unit for the GridSense Pi client.
+# Install:  sudo cp iot-101.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now iot-101
+# Logs:     journalctl -u iot-101 -f
+#
+# Change the two paths below if the code lives somewhere else.
 [Unit]
-Description=python3 code for iot-101
-After=network.target
+Description=GridSense Raspberry Pi client (iot-101)
+Wants=network-online.target
+After=network-online.target
+
 [Service]
 WorkingDirectory=/home/server2/Repository/python-mqtt-client-practice
-ExecStart=emv/bin/python3 main.py
+ExecStart=/home/server2/Repository/python-mqtt-client-practice/env/bin/python -u main.py
+Environment=PYTHONUNBUFFERED=1
 User=root
-Restart=on-failure
-RestartSec=10
+Restart=always
+RestartSec=5
+
 [Install]
 WantedBy=multi-user.target
