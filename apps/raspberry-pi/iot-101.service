@@ -10,8 +10,8 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-WorkingDirectory=/home/server2/Repository/python-mqtt-client-practice
-ExecStart=/home/server2/Repository/python-mqtt-client-practice/env/bin/python -u main.py
+WorkingDirectory=/home/server2/Repository/gridsense/apps/raspberry-pi
+ExecStart=/home/server2/Repository/gridsense/apps/raspberry-pi/env/bin/python -u main.py
 Environment=PYTHONUNBUFFERED=1
 User=root
 Restart=always

@@ -42,7 +42,7 @@ the room, so the dashboard is right even after a network drop.
 
 ```bash
 sudo apt-get install -y python3-venv python3-dev swig liblgpio-dev libgpiod2
-cd ~/Repository/python-mqtt-client-practice
+cd ~/Repository/gridsense/apps/raspberry-pi
 python3 -m venv env
 env/bin/pip install -r requirements.txt
 cp template.env .env   # then fill in the ids from the dashboard
