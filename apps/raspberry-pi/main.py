@@ -6,6 +6,7 @@ Topics (ids come from .env):
   publish   switch/<SWITCH_ID>/response    {"status": bool}           when a relay changes
   publish   room/<ROOM_ID>/toggle          {"toggle": bool}           when the room switch moves
   subscribe switch/<SWITCH_ID>/pending     {"action": bool}           dashboard commands
+                                                                      (ignored in manual mode)
 """
 import json
 import logging
@@ -129,6 +130,16 @@ class Device:
                 log.warning('bad command on %s: %r', msg.topic, msg.payload)
                 return
             action = bool(action)
+            if self.hw.has_room_toggle() and not self.hw.room_online():
+                # Manual mode: the switches belong to whoever is on site.
+                # Ignore the command and re-send the real state so the
+                # dashboard drops its pending "Starting..." right away.
+                log.info('manual mode: ignoring remote %s for switch %s',
+                         'ON' if action else 'OFF', switch_id)
+                state = self.hw.switch_state(switch_id)
+                if state is not None:
+                    self.publish_switch(switch_id, state)
+                return
             if self.hw.switch_state(switch_id) == action:
                 # Already there: just confirm.
                 self.publish_switch(switch_id, action)

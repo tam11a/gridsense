@@ -31,8 +31,10 @@ the room, so the dashboard is right even after a network drop.
   A bare 4-pin sensor needs a 4.7k-10k resistor between DATA and VCC.
 - **Relays**: `GPIO_PIN_n` drives relay *n*; `GPIO_PIN_n_INPUT` reads it back
   (internal pull-up, pulled low = on).
-- **Room toggle**: `TOGGLE_PIN` high = online mode. Going offline turns every
-  relay off.
+- **Room toggle**: `TOGGLE_PIN` high = online mode, low = manual mode. Going
+  to manual turns every relay off. In manual mode the Pi ignores switch
+  commands from the dashboard but still reports every relay's real state, so
+  switches flipped on site show up online.
 - **LEDs**: green = online mode, red = offline mode. Green blinks while the
   broker can't be reached.
 
